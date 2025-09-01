@@ -104,14 +104,14 @@ class TreeViewContextMenu extends MenuEx {
                 ; Update the property value
                 obj.%prop% := Number(response.Value)
                 ; Update the TreeView item's text
-                ctrl.Modify(Params.Token.Item, , path ' = ' response.Value)
+                ctrl.Modify(id, , path ' = ' response.Value)
                 ; Return the text to display in the tooltip
                 return 'Value updated to ' response.Value '.'
             } else {
                 ; Update the property value
                 obj.%prop% := response.Value
                 ; Update the TreeView item's text
-                ctrl.Modify(Params.Token.Item, , path ' = "' response.Value '"')
+                ctrl.Modify(id, , path ' = "' response.Value '"')
                 ; Return the text to display in the tooltip
                 return 'Value updated to "' response.Value '".'
             }
