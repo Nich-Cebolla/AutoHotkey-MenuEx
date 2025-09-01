@@ -12,7 +12,7 @@
  * cursor when the user right-clicked, or what was selected when the user activated the context menu.
  * In our example, we do not want the option "Update value" to be active when the user right-clicks
  * on a TreeView item representing a property with a value that is an object, and so our item
- * visibility handler disables / enables that option accordingly.
+ * availability handler disables / enables that option accordingly.
  */
 
 demo()
