@@ -59,14 +59,14 @@ class MenuEx {
     static __New() {
         this.DeleteProp('__New')
         proto := this.Prototype
-        proto.__SelectionHandler := proto.__ItemAvailabilityHandler := proto.Token := proto.__TooltipHandler := ''
+        proto.__HandlerSelection := proto.__HandlerItemAvailability := proto.Token := proto.__HandlerTooltip := ''
     }
     __New(Options?) {
         options := MenuEx.Options(Options ?? unset)
-        this.SetSelectionHandler(options.SelectionHandler || unset)
-        this.SetTooltipHandler(options.TooltipHandler || unset, options.TooltipDefaultOptions || unset)
+        this.SetSelectionHandler(options.HandlerSelection || unset)
+        this.SetTooltipHandler(options.HandlerTooltip || unset, options.TooltipDefaultOptions || unset)
         this.SetEventHandler(options.WhichMethod)
-        this.SetItemAvailabilityHandler(options.ItemAvailabilityHandler)
+        this.SetItemAvailabilityHandler(options.HandlerItemAvailability)
         this.ShowTooltips := options.ShowTooltips
         this.__Item := MenuExItemCollection()
         this.__Item.CaseSense := options.CaseSense
@@ -103,14 +103,14 @@ class MenuEx {
      * @param {String} [Options] - The options as described in
      * {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Add}.
      *
-     * @param {*} [Tooltip] - The tooltip options as described in
+     * @param {*} [HandlerTooltip] - The tooltip handler options as described in
      * {@link MenuExItem.Prototype.SetTooltipHandler}.
      *
      * @returns {MenuExItem}
      */
-    Add(Name, CallbackOrSubmenu, Options?, Tooltip?) {
-        this.Menu.Add(Name, this.__SelectionHandler, Options ?? unset)
-        this.__Item.Set(Name, this.Constructor.Call(Name, CallbackOrSubmenu, Options ?? unset, Tooltip ?? unset))
+    Add(Name, CallbackOrSubmenu, Options?, HandlerTooltip?) {
+        this.Menu.Add(Name, this.__HandlerSelection, Options ?? unset)
+        this.__Item.Set(Name, this.Constructor.Call(Name, CallbackOrSubmenu, Options ?? unset, HandlerTooltip ?? unset))
         return this.__Item.Get(Name)
     }
     /**
@@ -142,8 +142,8 @@ class MenuEx {
      *   "Options" of {@link MenuEx.Prototype.Add} and is the value that is set to property
      *   "__Options" of the {@link MenuExItem} instance.
      * - Tooltip: The tooltip options for the menu item. This is the value passed to the fourth parameter
-     *   "Tooltip" of {@link MenuEx.Prototype.Add} and is the value that is set to property
-     *   "__Tooltip" of the {@link MenuExItem} instance.
+     *   "HandlerTooltip" of {@link MenuEx.Prototype.Add} and is the value that is set to property
+     *   "__HandlerTooltip" of the {@link MenuExItem} instance.
      * @returns {MenuExItem}
      */
     AddObject(Obj) {
@@ -160,7 +160,7 @@ class MenuEx {
      */
     AddObjectList(Objs) {
         for obj in Objs {
-            this.Menu.Add(obj.Name, this.__SelectionHandler, HasProp(Obj, 'Options') ? (Obj.Options || unset) : unset)
+            this.Menu.Add(obj.Name, this.__HandlerSelection, HasProp(Obj, 'Options') ? (Obj.Options || unset) : unset)
             this.__Item.Set(obj.Name, this.Constructor.Call(
                 obj.Name
               , obj.Value
@@ -197,14 +197,14 @@ class MenuEx {
      * @param {String} [Options] - The options as described in
      * {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Add}.
      *
-     * @param {*} [Tooltip] - The tooltip options as described in
+     * @param {*} [HandlerTooltip] - The tooltip handler options as described in
      * {@link MenuExItem.Prototype.SetTooltipHandler}.
      *
      * @returns {MenuExItem}
      */
-    Insert(InsertBefore, Name, CallbackOrSubmenu, Options?, Tooltip?) {
+    Insert(InsertBefore, Name, CallbackOrSubmenu, Options?, HandlerTooltip?) {
         this.Menu.Insert(InsertBefore, Name, CallbackOrSubmenu, Options ?? unset)
-        this.__Item.Set(Name, this.Constructor.Call(Name, CallbackOrSubmenu, Options ?? unset, Tooltip ?? unset))
+        this.__Item.Set(Name, this.Constructor.Call(Name, CallbackOrSubmenu, Options ?? unset, HandlerTooltip ?? unset))
         return this.__Item.Get(Name)
     }
     /**
@@ -223,15 +223,15 @@ class MenuEx {
                 result := this.%item.__Value%(params)
             }
             if this.ShowTooltips {
-                if IsObject(item.Tooltip) {
-                    str := item.Tooltip.Call(this, result)
+                if IsObject(item.__HandlerTooltip) {
+                    str := item.__HandlerTooltip.Call(this, result)
                     if !IsObject(str) && StrLen(str) {
-                        this.TooltipHandler.Call(str)
+                        this.__HandlerTooltip.Call(str)
                     }
-                } else if item.Tooltip {
-                    this.TooltipHandler.Call(item.Tooltip)
+                } else if item.__HandlerTooltip {
+                    this.__HandlerTooltip.Call(item.__HandlerTooltip)
                 } else if !IsObject(result) && StrLen(result) {
-                    this.TooltipHandler.Call(result)
+                    this.__HandlerTooltip.Call(result)
                 }
             }
         } else {
@@ -270,7 +270,7 @@ class MenuEx {
      * causes the process to not call an item availability handler.
      */
     SetItemAvailabilityHandler(Callback?) {
-        this.__ItemAvailabilityHandler := Callback ?? ''
+        this.__HandlerItemAvailability := Callback ?? ''
     }
     /**
      * @param {*} [Callback] - A `Func` or callable object that is called when the user selects a
@@ -278,23 +278,23 @@ class MenuEx {
      * which should be suitable for most use cases.
      */
     SetSelectionHandler(Callback?) {
-        if this.HasOwnProp('__SelectionHandler')
-        && this.__SelectionHandler.HasOwnProp('Name')
-        && this.__SelectionHandler.Name == this.OnSelect.Name ' (bound)' {
+        if this.HasOwnProp('__HandlerSelection')
+        && this.__HandlerSelection.HasOwnProp('Name')
+        && this.__HandlerSelection.Name == this.OnSelect.Name ' (bound)' {
             if IsSet(Callback) {
                 ObjPtrAddRef(this)
-                this.__SelectionHandler := Callback
+                this.__HandlerSelection := Callback
             } else {
-                OutputDebug('The current selection handler is already set to ``' this.__SelectionHandler.Name '``.`n')
+                OutputDebug('The current selection handler is already set to ``' this.__HandlerSelection.Name '``.`n')
             }
         } else if IsSet(Callback) {
-            this.__SelectionHandler := Callback
+            this.__HandlerSelection := Callback
         } else {
             ; This creates a reference cycle.
-            this.__SelectionHandler := ObjBindMethod(this, 'OnSelect')
+            this.__HandlerSelection := ObjBindMethod(this, 'OnSelect')
             ; This is to identify that the object is the bound method (and thus requires handling
             ; the reference cycle).
-            this.__SelectionHandler.DefineProp('Name', { Value: this.OnSelect.Name ' (bound)' })
+            this.__HandlerSelection.DefineProp('Name', { Value: this.OnSelect.Name ' (bound)' })
         }
     }
     /**
@@ -302,13 +302,13 @@ class MenuEx {
      * with a menu item returns. `Callback` is expected to display a tooltip informing the user of
      * the result of the action associated with the menu item the user selected. For details about
      * this process, see {@link MenuExItem.Prototype.SetTooltipHandler}. If `Callback` is unset,
-     * the property "__TooltipHandler" is set with an instance of
+     * the property "__HandlerTooltip" is set with an instance of
      * {@link MenuEx.TooltipHandler} which should be suitable for most use cases.
      * @param {Object} [DefaultOptions] - An object with property : value pairs representing the
      * options to pass to the {@link MenuEx.TooltipHandler} constructor.
      */
     SetTooltipHandler(Callback?, DefaultOptions?) {
-        this.__TooltipHandler := Callback ?? MenuEx.TooltipHandler(DefaultOptions ?? unset)
+        this.__HandlerTooltip := Callback ?? MenuEx.TooltipHandler(DefaultOptions ?? unset)
     }
     /**
      * See {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Show}.
@@ -323,10 +323,10 @@ class MenuEx {
           , Item: Item, X: X, Y: Y
         }
         ObjSetBase(this.Token, MenuExActivationToken.Prototype)
-        if HasMethod(this, 'ItemAvailabilityHandler') {
-            this.ItemAvailabilityHandler()
-        } else if IsObject(this.__ItemAvailabilityHandler) {
-            this.__ItemAvailabilityHandler.Call(this)
+        if HasMethod(this, 'HandlerItemAvailability') {
+            this.HandlerItemAvailability()
+        } else if IsObject(this.__HandlerItemAvailability) {
+            this.__HandlerItemAvailability.Call(this)
         }
         this.Menu.Show(X, Y)
     }
@@ -337,10 +337,10 @@ class MenuEx {
           , Item: Item, X: X, Y: Y
         }
         ObjSetBase(this.Token, MenuExActivationToken.Prototype)
-        if HasMethod(this, 'ItemAvailabilityHandler') {
-            this.ItemAvailabilityHandler()
-        } else if IsObject(this.__ItemAvailabilityHandler) {
-            this.__ItemAvailabilityHandler.Call(this)
+        if HasMethod(this, 'HandlerItemAvailability') {
+            this.HandlerItemAvailability()
+        } else if IsObject(this.__HandlerItemAvailability) {
+            this.__HandlerItemAvailability.Call(this)
         }
         this.Menu.Show(X, Y)
     }
@@ -351,11 +351,11 @@ class MenuEx {
             ObjPtrAddRef(this)
             this.DeleteProp('Constructor')
         }
-        if this.HasOwnProp('__SelectionHandler')
-        && this.__SelectionHandler.HasOwnProp('Name')
-        && this.__SelectionHandler.Name == this.OnSelect.Name ' (bound)' {
+        if this.HasOwnProp('__HandlerSelection')
+        && this.__HandlerSelection.HasOwnProp('Name')
+        && this.__HandlerSelection.Name == this.OnSelect.Name ' (bound)' {
             ObjPtrAddRef(this)
-            this.DeleteProp('__SelectionHandler')
+            this.DeleteProp('__HandlerSelection')
         }
     }
     __Enum(VarCount) => this.__Item.__Enum(VarCount)
@@ -379,29 +379,29 @@ class MenuEx {
     CaseSense => this.__Item.CaseSense
     Count => this.__Item.Count
     IsMenuBar => this.Menu is MenuBar
-    ItemAvailabilityHandler {
-        Get => this.__ItemAvailabilityHandler
+    HandlerItemAvailability {
+        Get => this.__HandlerItemAvailability
         Set => this.SetItemAvailabilityHandler(Value)
     }
     Handle => this.Menu.Handle
-    SelectionHandler {
-        Get => this.__SelectionHandler
+    HandlerSelection {
+        Get => this.__HandlerSelection
         Set => this.SetSelectionHandler(Value)
     }
-    TooltipHandler {
-        Get => this.__TooltipHandler
+    HandlerTooltip {
+        Get => this.__HandlerTooltip
         Set => this.SetTooltipHandler(Value)
     }
 
     class Options {
         static Default := {
             CaseSense: false
-          , TooltipHandler: ''
-          , SelectionHandler: ''
+          , HandlerTooltip: ''
+          , HandlerSelection: ''
           , ShowTooltips: false
           , WhichMethod: 1
           , TooltipDefaultOptions: ''
-          , ItemAvailabilityHandler: ''
+          , HandlerItemAvailability: ''
           , IsMenuBar: false
         }
         static Call(Options?) {
@@ -548,7 +548,7 @@ class MenuExItem {
     static __New() {
         this.DeleteProp('__New')
         proto := this.Prototype
-        proto.__Name := proto.__Value := proto.__Options := proto.__Tooltip := ''
+        proto.__Name := proto.__Value := proto.__Options := proto.__HandlerTooltip := ''
     }
     /**
      * @see {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Add}.
@@ -588,15 +588,15 @@ class MenuExItem {
      * @param {String} [MenuItemOptions = ""] - Any options as described in
      * {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Add}.
      *
-     * @param {*} [Tooltip] - See {@link MenuExItem.Prototype.SetTooltipHandler} for details about
+     * @param {*} [HandlerTooltip] - See {@link MenuExItem.Prototype.SetTooltipHandler} for details about
      * this parameter.
      */
-    __New(Name, CallbackOrSubmenu, MenuItemOptions := '', Tooltip?) {
+    __New(Name, CallbackOrSubmenu, MenuItemOptions := '', HandlerTooltip?) {
         this.__Name := Name
         this.__Value := CallbackOrSubmenu
         this.__Options := MenuItemOptions
-        if IsSet(Tooltip) {
-            this.__Tooltip := Tooltip
+        if IsSet(HandlerTooltip) {
+            this.__HandlerTooltip := HandlerTooltip
         }
     }
     /**
@@ -636,12 +636,12 @@ class MenuExItem {
      * When {@link MenuEx#ShowTooltips} is true, there are three approaches for controlling the tooltip
      * text that is displayed when the user selects a menu item. When the user selects a menu item,
      * the return value returned by the function associated with the menu item is stored in a variable,
-     * and the property {@link MenuExItem#Tooltip} is evaluated to determine if a tooltip will be displayed,
+     * and the property {@link MenuExItem#HandlerTooltip} is evaluated to determine if a tooltip will be displayed,
      * and if so, what the text will be.
      *
-     * Note that, by default, the value of {@link MenuExItem#Tooltip} is an empty string.
+     * Note that, by default, the value of {@link MenuExItem#HandlerTooltip} is an empty string.
      *
-     * If {@link MenuExItem#Tooltip} is an object, it is assumed to be a function or callable object.
+     * If {@link MenuExItem#HandlerTooltip} is an object, it is assumed to be a function or callable object.
      * The function is called with parameters:
      * 1. The {@link MenuEx} instance.
      * 2. The return value from the menu item's function.
@@ -649,10 +649,10 @@ class MenuExItem {
      * The function should return the string that will be displayed by the tooltip. If the function
      * returns an object or an empty string, no tooltip is displayed.
      *
-     * If {@link MenuExItem#Tooltip} is a significant string value, the return value from the menu
-     * item's function is ignored and {@link MenuExItem#Tooltip} is displayed in the tooltip.
+     * If {@link MenuExItem#HandlerTooltip} is a significant string value, the return value from the menu
+     * item's function is ignored and {@link MenuExItem#HandlerTooltip} is displayed in the tooltip.
      *
-     * If {@link MenuExItem#Tooltip} is zero or an empty string, and if the return value from the menu
+     * If {@link MenuExItem#HandlerTooltip} is zero or an empty string, and if the return value from the menu
      * item's function is a number or non-empty string, the return value is displayed in the tooltip.
      * Note that if the return value is a numeric zero or a string containing only a zero, that is
      * displayed in the tooltip; only an empty string will cause a tooltip to not be displayed.
@@ -665,7 +665,7 @@ class MenuExItem {
          * @memberof MenuExItem
          * @instance
          */
-        this.__Tooltip := Value
+        this.__HandlerTooltip := Value
     }
     /**
      * Toggles the display of a checkmark next to the menu item.
@@ -685,6 +685,12 @@ class MenuExItem {
     Uncheck() {
         this.MenuEx.Menu.Uncheck(this.__Name)
     }
+    HandlerTooltip {
+        Get => this.__HandlerTooltip
+        Set {
+            this.__HandlerTooltip := Value
+        }
+    }
     Name {
         Get => this.__Name
         Set {
@@ -699,12 +705,6 @@ class MenuExItem {
         Set {
             this.MenuEx.Menu.Add(this.__Name, , Value)
             this.__Options := Value
-        }
-    }
-    Tooltip {
-        Get => this.__Tooltip
-        Set {
-            this.__Tooltip := Value
         }
     }
     Value {
