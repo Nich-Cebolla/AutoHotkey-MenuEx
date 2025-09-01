@@ -132,12 +132,18 @@ class MenuEx {
     }
     /**
      * @param {Object} Obj - An object with parameters as property : value pairs.
-     * - Name: The name of the menu item.
-     * - Value: The value of the menu item; this is the value passed to the second parameter "CallbackOrSubmenu"
-     *   of {@link MenuEx.Prototype.Add} and this is also the value that is set to property "__Value"
+     * - Name: The name of the menu item. This is the value passed to the first parameter "Name" of
+     *   {@link MenuEx.Prototype.Add} and is the value that is set to property "__Name"
      *   of the {@link MenuExItem} instance.
-     * - Options (optional): The options as described in {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Add}.
-     * - Tooltip (optional): The tooltip options as described in {@link MenuExItem.Prototype.SetTooltipHandler}.
+     * - Value: The value of the menu item; this is the value passed to the second parameter
+     *   "CallbackOrSubmenu" of {@link MenuEx.Prototype.Add} and is the value that is set to property
+     *   "__Value" of the {@link MenuExItem} instance.
+     * - Options: The options for the menu item. This is the value passed to the third parameter
+     *   "Options" of {@link MenuEx.Prototype.Add} and is the value that is set to property
+     *   "__Options" of the {@link MenuExItem} instance.
+     * - Tooltip: The tooltip options for the menu item. This is the value passed to the fourth parameter
+     *   "Tooltip" of {@link MenuEx.Prototype.Add} and is the value that is set to property
+     *   "__Tooltip" of the {@link MenuExItem} instance.
      * @returns {MenuExItem}
      */
     AddObject(Obj) {
@@ -149,7 +155,8 @@ class MenuEx {
         )
     }
     /**
-     * @param {Object[]} Objs - An array of objects as described by {@link MenuEx.Prototype.AddObject}.
+     * @param {Object[]|MenuExItem[]} Objs - An array of objects as described by {@link MenuEx.Prototype.AddObject},
+     * or an array of {@link MenuExItem} instance objects.
      */
     AddObjectList(Objs) {
         for obj in Objs {
@@ -541,7 +548,7 @@ class MenuExItem {
     static __New() {
         this.DeleteProp('__New')
         proto := this.Prototype
-        proto.__Name := proto.__Value := proto.__Options := proto.Tooltip := ''
+        proto.__Name := proto.__Value := proto.__Options := proto.__Tooltip := ''
     }
     /**
      * @see {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Add}.
@@ -589,7 +596,7 @@ class MenuExItem {
         this.__Value := CallbackOrSubmenu
         this.__Options := MenuItemOptions
         if IsSet(Tooltip) {
-            this.Tooltip := Tooltip
+            this.__Tooltip := Tooltip
         }
     }
     /**
@@ -658,7 +665,7 @@ class MenuExItem {
          * @memberof MenuExItem
          * @instance
          */
-        this.Tooltip := Value
+        this.__Tooltip := Value
     }
     /**
      * Toggles the display of a checkmark next to the menu item.
@@ -692,6 +699,12 @@ class MenuExItem {
         Set {
             this.MenuEx.Menu.Add(this.__Name, , Value)
             this.__Options := Value
+        }
+    }
+    Tooltip {
+        Get => this.__Tooltip
+        Set {
+            this.__Tooltip := Value
         }
     }
     Value {
