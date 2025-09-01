@@ -7,11 +7,10 @@
 
 /**
  * `MenuEx` is a composotion of AHK's native `Menu` class. The purpose of `MenuEx` is to provide a
- * standardized system for creating, modifying, and using a menu. Using `MenuEx` will feel more natural
- * to those who prefer an object-oriented coding style. For each item added to the menu, an associated
- * {@link MenuExItem} is created and added to the collection. The `MenuExItem` instances can be
- * accessed by name from the `MenuEx` instance, and the `MenuExItem` instance's properties can be
- * modified to change the characteristics of the menu item.
+ * standardized system for creating, modifying, and using a menu. For each item added to the menu,
+ * an associated {@link MenuExItem} is created and added to the collection. The `MenuExItem` instances
+ * can be accessed by name from the `MenuEx` instance, and the `MenuExItem` instance's properties can
+ * be modified to change the characteristics of the menu item.
  *
  * ## Extending MenuEx
  *
@@ -85,6 +84,30 @@ class MenuEx {
             this.Initialize(options)
         }
     }
+    /**
+     * @param {String} Name - The name of the menu item. This is used across the {@link MenuEx} class
+     * and related classes. It is the name that is used to get a reference to the {@link MenuExItem}
+     * instance associated with the menu item, e.g. `MenuExObj.Get("ItemName")`. It is also the text
+     * that is displayed in the menu for that item. It is also the value assigned to the "__Name"
+     * property of the {@link MenuExItem} instance.
+     *
+     * @param {*} CallbackOrSubmenu - One of the following:
+     * - A `Menu` object, if the menu item is a submenu.
+     * - A `Func` or callable object that will be called when the user selects the item.
+     * - A string representing the name of a class instance method defined by your custom class which
+     *   inherits from `MenuEx` (see the "test\demo-TreeView-context-menu.ahk" for an example).
+     *
+     * The value of `CallbackOrSubmenu` is assigned to the "__Value" property of the {@link MenuExItem}
+     * instance.
+     *
+     * @param {String} [Options] - The options as described in
+     * {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Add}.
+     *
+     * @param {*} [Tooltip] - The tooltip options as described in
+     * {@link MenuExItem.Prototype.SetTooltipHandler}.
+     *
+     * @returns {MenuExItem}
+     */
     Add(Name, CallbackOrSubmenu, Options?, Tooltip?) {
         this.Menu.Add(Name, this.__SelectionHandler, Options ?? unset)
         this.__Item.Set(Name, this.Constructor.Call(Name, CallbackOrSubmenu, Options ?? unset, Tooltip ?? unset))
@@ -93,6 +116,9 @@ class MenuEx {
     /**
      * "AddList" should be used only if the menu which originally was associated with the items no
      * longer exists. To copy items from one menu to another, use "AddObjectList" instead.
+     * @param {MenuExItem[]} Items - An array of {@link MenuExItem} objects. For each item in the
+     * array, the base of the item is changed to {@link MenuEx#Constructor.Prototype} and the item
+     * is added to the menu.
      */
     AddList(Items) {
         container := this.__Item
@@ -104,6 +130,16 @@ class MenuEx {
             m.Add(item.__Name, item.__Value, item.__Options || unset)
         }
     }
+    /**
+     * @param {Object} Obj - An object with parameters as property : value pairs.
+     * - Name: The name of the menu item.
+     * - Value: The value of the menu item; this is the value passed to the second parameter "CallbackOrSubmenu"
+     *   of {@link MenuEx.Prototype.Add} and this is also the value that is set to property "__Value"
+     *   of the {@link MenuExItem} instance.
+     * - Options (optional): The options as described in {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Add}.
+     * - Tooltip (optional): The tooltip options as described in {@link MenuExItem.Prototype.SetTooltipHandler}.
+     * @returns {MenuExItem}
+     */
     AddObject(Obj) {
         return this.Add(
             Obj.Name
@@ -112,6 +148,9 @@ class MenuEx {
           , HasProp(Obj, 'Tooltip') ? (Obj.Tooltip || unset) : unset
         )
     }
+    /**
+     * @param {Object[]} Objs - An array of objects as described by {@link MenuEx.Prototype.AddObject}.
+     */
     AddObjectList(Objs) {
         for obj in Objs {
             this.Menu.Add(obj.Name, this.__SelectionHandler, HasProp(Obj, 'Options') ? (Obj.Options || unset) : unset)
@@ -123,19 +162,51 @@ class MenuEx {
             ))
         }
     }
-    Clear() => this.__Item.Clear()
-    Clone() => this.__Item.Clone()
     Delete(Name) {
         this.Menu.Delete(Name)
         this.__Item.Delete(Name)
     }
     Get(Name) => this.__Item.Get(Name)
     Has(Name) => this.__Item.Has(Name)
-    Insert(InsertBefore, Name, CallbackOrSubmenu, Options?) {
+    /**
+     * @param {String|Integer} InsertBefore - The name or position of the menu item before which to
+     * insert the new menu item.
+     *
+     * @param {String} Name - The name of the menu item. This is used across the {@link MenuEx} class
+     * and related classes. It is the name that is used to get a reference to the {@link MenuExItem}
+     * instance associated with the menu item, e.g. `MenuExObj.Get("ItemName")`. It is also the text
+     * that is displayed in the menu for that item. It is also the value assigned to the "__Name"
+     * property of the {@link MenuExItem} instance.
+     *
+     * @param {*} CallbackOrSubmenu - One of the following:
+     * - A `Menu` object, if the menu item is a submenu.
+     * - A `Func` or callable object that will be called when the user selects the item.
+     * - A string representing the name of a class instance method defined by your custom class which
+     *   inherits from `MenuEx` (see the "test\demo-TreeView-context-menu.ahk" for an example).
+     *
+     * The value of `CallbackOrSubmenu` is assigned to the "__Value" property of the {@link MenuExItem}
+     * instance.
+     *
+     * @param {String} [Options] - The options as described in
+     * {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Add}.
+     *
+     * @param {*} [Tooltip] - The tooltip options as described in
+     * {@link MenuExItem.Prototype.SetTooltipHandler}.
+     *
+     * @returns {MenuExItem}
+     */
+    Insert(InsertBefore, Name, CallbackOrSubmenu, Options?, Tooltip?) {
         this.Menu.Insert(InsertBefore, Name, CallbackOrSubmenu, Options ?? unset)
-        this.__Item.Set(Name, this.Constructor.Call(Name, CallbackOrSubmenu, Options ?? unset))
+        this.__Item.Set(Name, this.Constructor.Call(Name, CallbackOrSubmenu, Options ?? unset, Tooltip ?? unset))
         return this.__Item.Get(Name)
     }
+    /**
+     * "OnSelect" is the default selection handler that is called when the user selects a menu item.
+     * Your code will not call "OnSelect" directly.
+     * @param {String} Name - The name of the menu item that was selected.
+     * @param {Integer} ItemPos - The item position of the menu item that was selected.
+     * @param {Menu} MenuObj - The menu object associated wit hthe menu item that was selected.
+     */
     OnSelect(Name, ItemPos, MenuObj) {
         if item := this.__Item.Get(Name) {
             params := { Menu: MenuObj, Name: Name, Pos: ItemPos, Token: this.Token }
@@ -160,7 +231,12 @@ class MenuEx {
             throw UnsetItemError('Item not found.', -1, Name)
         }
     }
-    Set(params*) => this.__Item.Set(params*)
+    /**
+     * See {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#SetColor}.
+     */
+    SetColor(ColorValue, ApplyToSubmenus := true) {
+        this.Menu.SetColor(ColorValue, ApplyToSubmenus)
+    }
     /**
      * @param {Integer} [Which = 0] - One of the following:
      * - 0: Use `0` when the menu is a `MenuBar` or a submenu. Generally, if the menu is not intended
@@ -177,9 +253,23 @@ class MenuEx {
             this.DeleteProp('Call')
         }
     }
+    /**
+     * @param {*} [Callback] - A `Func` or callable object that is called prior to showing the menu,
+     * intended to enable or disable menu items depending on the item that was underneath the cursor
+     * when the use right-clicked, or the item that was selected when the user activated the
+     * context menu. The item availability handler is only called if
+     * {@link MenuEx.Prototype.SetEventHandler} was called with a value of `1` or `2`. If `Callback`
+     * is unset, the value of property "__ItemAvailabilityHandle" is set with an empty string, which
+     * causes the process to not call an item availability handler.
+     */
     SetItemAvailabilityHandler(Callback?) {
         this.__ItemAvailabilityHandler := Callback ?? ''
     }
+    /**
+     * @param {*} [Callback] - A `Func` or callable object that is called when the user selects a
+     * menu item. The `Callback` is unset, the selection handler is defined as the "OnSelect" method,
+     * which should be suitable for most use cases.
+     */
     SetSelectionHandler(Callback?) {
         if this.HasOwnProp('__SelectionHandler')
         && this.__SelectionHandler.HasOwnProp('Name')
@@ -200,8 +290,24 @@ class MenuEx {
             this.__SelectionHandler.DefineProp('Name', { Value: this.OnSelect.Name ' (bound)' })
         }
     }
+    /**
+     * @param {*} [Callback] - A `Func` or callable object that is called after the function associated
+     * with a menu item returns. `Callback` is expected to display a tooltip informing the user of
+     * the result of the action associated with the menu item the user selected. For details about
+     * this process, see {@link MenuExItem.Prototype.SetTooltipHandler}. If `Callback` is unset,
+     * the property "__TooltipHandler" is set with an instance of
+     * {@link MenuEx.TooltipHandler} which should be suitable for most use cases.
+     * @param {Object} [DefaultOptions] - An object with property : value pairs representing the
+     * options to pass to the {@link MenuEx.TooltipHandler} constructor.
+     */
     SetTooltipHandler(Callback?, DefaultOptions?) {
         this.__TooltipHandler := Callback ?? MenuEx.TooltipHandler(DefaultOptions ?? unset)
+    }
+    /**
+     * See {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Show}.
+     */
+    Show(X?, Y?) {
+        this.Menu.Show(X ?? unset, Y ?? unset)
     }
     __Call1(GuiCtrlObj, Item, IsRightClick, X, Y) {
         this.Token := {
@@ -321,7 +427,7 @@ class MenuEx {
             this.Numbers := List
         }
         static DefaultOptions := {
-            Duration: 2000
+            Duration: 3000
           , X: 0
           , Y: 0
           , Mode: 'Mouse' ; Mouse / Absolute (M/A)
@@ -486,19 +592,36 @@ class MenuExItem {
             this.Tooltip := Tooltip
         }
     }
+    /**
+     * Adds a checkbox next to the menu item.
+     */
     Check() {
         this.MenuEx.Menu.Check(this.__Name)
     }
+    /**
+     * Deletes the menu item.
+     */
     Delete() {
         this.MenuEx.Menu.Delete(this.__Name)
         this.MenuEx.__Item.Delete(this.__Name)
     }
+    /**
+     * Disables the menu item, causing the text to appear more grey than the surrounding text and
+     * making it so the user cannot interact with the menu item.
+     */
     Disable() {
         this.MenuEx.Menu.Disable(this.__Name)
     }
+    /**
+     * Enables the menu item, undoing the effect of {@link MenuExItem.Prototype.Disable} if it was
+     * previously called.
+     */
     Enable() {
         this.MenuEx.Menu.Enable(this.__Name)
     }
+    /**
+     * See {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#SetIcon} for details.
+     */
     SetIcon(FileName, IconNumber := 1, IconWidth?) {
         this.MenuEx.Menu.SetIcon(this.__Name, FileName, IconNumber, IconWidth ?? unset)
     }
@@ -537,12 +660,21 @@ class MenuExItem {
          */
         this.Tooltip := Value
     }
+    /**
+     * Toggles the display of a checkmark next to the menu item.
+     */
     ToggleCheck() {
         this.MenuEx.Menu.ToggleCheck(this.__Name)
     }
+    /**
+     * Toggles the availability of the menu item.
+     */
     ToggleEnable() {
         this.MenuEx.Menu.ToggleEnable(this.__Name)
     }
+    /**
+     * Removes a checkmark next to the menu item if one is present.
+     */
     Uncheck() {
         this.MenuEx.Menu.Uncheck(this.__Name)
     }
