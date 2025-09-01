@@ -87,7 +87,7 @@ class TreeViewContextMenu extends MenuEx {
         id := Params.Token.Item
         ; Get the item's text
         text := ctrl.GetText(id)
-        ; Split the text at the equal sign; left side if the path, right side is the value
+        ; Split the text at the equal sign; left side is the path, right side is the value
         split := StrSplit(text, '=', '`s')
         path := split[1]
         value := split[2]
