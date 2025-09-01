@@ -52,7 +52,7 @@ class TreeViewContextMenu extends MenuEx {
         ctrl := this.Token.Ctrl
         id := this.Token.Item
         text := ctrl.GetText(id)
-        if RegExMatch(text, '= \{ Object \}$') {
+        if RegExMatch(text, '^[^=]+= \{ Object \}$') {
             this.__Item.Get('Update value').Disable()
         } else {
             this.__Item.Get('Update value').Enable()
