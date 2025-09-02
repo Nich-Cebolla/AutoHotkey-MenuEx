@@ -12,6 +12,28 @@
  * can be accessed by name from the `MenuEx` instance, and the `MenuExItem` instance's properties can
  * be modified to change the characteristics of the menu item.
  *
+ * ## Context Menu
+ *
+ * Though `MenuEx` is useful for any menu, I designed it with a focus on functionality related to
+ * context menus. When creating a context menu with `MenuEx`, the `MenuEx` instance will have a
+ * method "Call" which activates the context menu. To use, simply pass the `MenuEx` object to the
+ * event handler for the gui or control.
+ *
+ * @example
+ *  g := Gui()
+ *  MenuExObj := MenuEx()
+ *  g.OnEvent('ContextMenu', MenuExObj) ; pass `MenuExObj` to event handler
+ * @
+ *
+ * Or
+ *
+ * @example
+ *  g := Gui()
+ *  g.Add('TreeView', 'w100 r10 vTv')
+ *  MenuExObj := MenuEx()
+ *  g['Tv'].OnEvent('ContextMenu', MenuExObj) ; pass `MenuExObj` to event handler
+ * @
+ *
  * ## Extending MenuEx
  *
  * `MenuEx` was designed with object inheritance in mind. One benefit of using `MenuEx` over
