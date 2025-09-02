@@ -29,7 +29,7 @@ class test {
           , ItemVisibilityHandler: ''
           , IsMenuBar: false
         }
-        mex := this.mex := MenuEx(o)
+        mex := this.mex := MenuEx(Menu(), o)
         mex.Add('callback1', callback1)
         mex.Add('callback2', callback2)
         tv.OnEvent('ContextMenu', mex)
