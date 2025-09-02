@@ -52,7 +52,7 @@
  * It is often appropriate to adjust the availability of one or more menu items depending on the
  * context in which a context menu is activated. The item availability handler is only used when the
  * menu is a context menu (more specifically, the item availability handler is only used when
- * {@link MenuEx.Prototype.SetEventHandler} is called with a value of `1` or `2`.
+ * {@link MenuEx.Prototype.SetEventHandler} is called with a value of `1` or `2`).
  *
  */
 class MenuEx {
