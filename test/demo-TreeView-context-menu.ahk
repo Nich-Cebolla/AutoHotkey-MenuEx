@@ -48,7 +48,7 @@ class TreeViewContextMenu extends MenuEx {
     }
     ; Define an item availability handler to enable / disable "Update value" depending on what item
     ; was right-clicked on or what item was selected when the context menu was activated.
-    ItemAvailabilityHandler() {
+    HandlerItemAvailability() {
         ctrl := this.Token.Ctrl
         id := this.Token.Item
         text := ctrl.GetText(id)
@@ -143,7 +143,7 @@ class demo {
         ids := [0]
         RecursiveFunction(this.ExampleObj, 'demo.ExampleObj')
         this.Options := { ShowTooltips: true }
-        this.ContextMenu := TreeViewContextMenu(this.Options)
+        this.ContextMenu := TreeViewContextMenu(Menu(), this.Options)
         tv.OnEvent('ContextMenu', this.ContextMenu)
         g.Show()
 
