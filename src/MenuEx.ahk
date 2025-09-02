@@ -21,7 +21,7 @@
  *
  * @example
  *  g := Gui()
- *  MenuExObj := MenuEx()
+ *  MenuExObj := MenuEx(Menu())
  *  g.OnEvent('ContextMenu', MenuExObj) ; pass `MenuExObj` to event handler
  * @
  *
@@ -30,7 +30,7 @@
  * @example
  *  g := Gui()
  *  g.Add('TreeView', 'w100 r10 vTv')
- *  MenuExObj := MenuEx()
+ *  MenuExObj := MenuEx(Menu())
  *  g['Tv'].OnEvent('ContextMenu', MenuExObj) ; pass `MenuExObj` to event handler
  * @
  *
@@ -76,6 +76,8 @@
  * menu is a context menu (more specifically, the item availability handler is only used when
  * {@link MenuEx.Prototype.SetEventHandler} is called with a value of `1` or `2`).
  *
+ * Define the item availability handler as an instance method "HandlerItemAvailability".
+ *
  */
 class MenuEx {
     static __New() {
@@ -83,7 +85,34 @@ class MenuEx {
         proto := this.Prototype
         proto.__HandlerSelection := proto.__HandlerItemAvailability := proto.Token := proto.__HandlerTooltip := ''
     }
-    __New(Options?) {
+    /**
+     * @param {Object} [Options] - An object with zero or more options as property : value pairs.
+     *
+     * @param {Boolean} [Options.CaseSense = false] - If true, the collection is case-sensitive. This
+     * means that accessing menu items from the collection by name is case-sensitive.
+     *
+     * @param {*} [Options.HandlerTooltip = ""] - See {@link MenuEx.Prototype.SetTooltipHandler~Callback}.
+     *
+     * @param {*} [Options.HandlerSelection = ""] - See {@link MenuEx.Prototype.SetSelectionHandler~Callback}.
+     *
+     * @param {Boolean} [Options.ShowTooltip = false] - If true, enables tooltip functionality.
+     * `MenuEx`'s tooltip functionality allows you to define your menu and related options to
+     * display a tooltip when the user selects a menu item. See {@link MenuExItem.Prototype.SetTooltipHandler}
+     * for details and see file "test\demo-TreeView-context-menu.ahk" for a working example.
+     *
+     * @param {Integer} [Options.WhichMethod = 1] - `Options.WhichMethod` is passed directly to
+     * method {@link MenuEx.Prototype.SetEventHandler}. See the description for details.
+     *
+     * @param {Object} [Options.TooltipDefaultOptions = ""] - The value passed to the second parameter
+     * of {@link MenuEx.TooltipHandler} when creating the tooltip handler function object. If
+     * `Options.HandlerTooltip` is set with a function, then `Options.TooltipDefaultOptions` is
+     * ignored.
+     *
+     * @param {*} [Options.HandlerItemAvailability = ""] - See
+     * {@link MenuEx.Prototype.SetItemAvailabilityHandler~Callback}.
+     */
+    __New(MenuObj, Options?) {
+        this.Menu := MenuObj
         options := MenuEx.Options(Options ?? unset)
         this.SetSelectionHandler(options.HandlerSelection || unset)
         this.SetTooltipHandler(options.HandlerTooltip || unset, options.TooltipDefaultOptions || unset)
@@ -93,7 +122,6 @@ class MenuEx {
         this.__Item := MenuExItemCollection()
         this.__Item.CaseSense := options.CaseSense
         this.__Item.Default := ''
-        this.Menu := options.IsMenuBar ? MenuBar() : Menu()
         this.Constructor := Class()
         this.Constructor.Base := MenuExItem
         this.Constructor.Prototype := {
@@ -424,7 +452,6 @@ class MenuEx {
           , WhichMethod: 1
           , TooltipDefaultOptions: ''
           , HandlerItemAvailability: ''
-          , IsMenuBar: false
         }
         static Call(Options?) {
             if IsSet(Options) {
