@@ -1,11 +1,11 @@
 ﻿
+#SingleInstance force
 #include ..\src\MenuEx.ahk
 
 /**
- * In this example, we create a class, `TreeViewContextMenu`, that can be used any number of times
- * to create a new context menu object. Each instance of `TreeViewContextMenu` will initially include
- * two items "Copy value" and "Update value". Though not shown here, each individual instance can have
- * new items added to it, or items removed from it, without impacting the items of other instances.
+ * In this example, we create a class, `TreeViewContextMenu`, that can be used to create a new
+ * context menu object. Each instance of `TreeViewContextMenu` will initially include
+ * two items "Copy value" and "Update value".
  *
  * This example also demonstrates how to use the item availability handler. The item availability handler
  * is a function that enables and disables menu items as a function of what was underneath the mouse
@@ -26,7 +26,8 @@ class TreeViewContextMenu extends MenuEx {
         ; It's best to delete the static "__New" method because inheritors don't need to repeat these
         ; actions since inheritors will already have access to the array.
         this.DeleteProp('__New')
-        ; Add the array to the prototype
+        ; Add the array to the prototype. These are referenced by `MenuEx.Prototype.Initialize`,
+        ; which you can also override with new logic, but in his case we use the built-in logic.
         this.Prototype.DefaultItems := [
             ; Only the "Name" and "Value" are required. Other properties are "Options", which are the
             ; options described by https://www.autohotkey.com/docs/v2/lib/Menu.htm#Add, and "Tooltip",
@@ -39,35 +40,22 @@ class TreeViewContextMenu extends MenuEx {
           , { Name: 'Update value', Value: 'SelectUpdateValue' }
         ]
     }
-
-    ; Define an "Initialize" method to add the items to the menu. When "Initialize" is called,
-    ; the options object is passed as a parameter, but in this case we do not need it so we ignore
-    ; it with the "*" operator.
-    Initialize(*) {
-        this.AddObjectList(this.DefaultItems)
-    }
     ; Define an item availability handler to enable / disable "Update value" depending on what item
     ; was right-clicked on or what item was selected when the context menu was activated.
-    HandlerItemAvailability() {
-        ctrl := this.Token.Ctrl
-        id := this.Token.Item
-        text := ctrl.GetText(id)
+    HandlerItemAvailability(Ctrl, IsRightClick, Item, *) {
+        text := ctrl.GetText(Item)
         if RegExMatch(text, '^[^=]+= \{ Object \}$') {
             this.__Item.Get('Update value').Disable()
         } else {
             this.__Item.Get('Update value').Enable()
         }
     }
-    SelectCopyValue(Params) {
+    SelectCopyValue(Name, ItemPos, MenuObj, GuiObj, Ctrl, Item) {
         ; This function contains logic that uses the available information to add the property
         ; value to the clipboard
 
-        ; Get reference to TreeView control
-        ctrl := Params.Token.Ctrl
-        ; Get the id of the TreeView item
-        id := Params.Token.Item
         ; Get the item's text
-        text := ctrl.GetText(id)
+        text := ctrl.GetText(Item)
         ; Split the text at the equal sign; left side if the path, right side is the value
         split := StrSplit(text, '=', '`s')
         value := split[2]
@@ -77,16 +65,12 @@ class TreeViewContextMenu extends MenuEx {
         return 'Copied: ' value
 
     }
-    SelectUpdateValue(Params) {
+    SelectUpdateValue(Name, ItemPos, MenuObj, GuiObj, Ctrl, Item) {
         ; This function contains logic that uses the available information to change the value of
         ; the object's property.
 
-        ; Get reference to TreeView control
-        ctrl := Params.Token.Ctrl
-        ; Get the id of the TreeView item
-        id := Params.Token.Item
         ; Get the item's text
-        text := ctrl.GetText(id)
+        text := ctrl.GetText(Item)
         ; Split the text at the equal sign; left side is the path, right side is the value
         split := StrSplit(text, '=', '`s')
         path := split[1]
@@ -104,14 +88,14 @@ class TreeViewContextMenu extends MenuEx {
                 ; Update the property value
                 obj.%prop% := Number(response.Value)
                 ; Update the TreeView item's text
-                ctrl.Modify(id, , path ' = ' response.Value)
+                ctrl.Modify(Item, , path ' = ' response.Value)
                 ; Return the text to display in the tooltip
                 return 'Value updated to ' response.Value '.'
             } else {
                 ; Update the property value
                 obj.%prop% := response.Value
                 ; Update the TreeView item's text
-                ctrl.Modify(id, , path ' = "' response.Value '"')
+                ctrl.Modify(Item, , path ' = "' response.Value '"')
                 ; Return the text to display in the tooltip
                 return 'Value updated to "' response.Value '".'
             }

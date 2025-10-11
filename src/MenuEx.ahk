@@ -82,9 +82,12 @@ class MenuEx {
     static __New() {
         this.DeleteProp('__New')
         proto := this.Prototype
-        proto.__HandlerSelection := proto.__HandlerItemAvailability := proto.Token := proto.__HandlerTooltip := ''
+        proto.__HandlerSelection := proto.__HandlerItemAvailability := proto.Token :=
+        proto.__HandlerTooltip := ''
     }
     /**
+     * @param {Menu|MenuBar} [MenuObj] - The menu object. If unset, a new instance of `Menu` is created.
+     *
      * @param {Object} [Options] - An object with zero or more options as property : value pairs.
      *
      * @param {Boolean} [Options.CaseSense = false] - If true, the collection is case-sensitive. This
@@ -94,7 +97,7 @@ class MenuEx {
      *
      * @param {*} [Options.HandlerSelection = ""] - See {@link MenuEx.Prototype.SetSelectionHandler~Callback}.
      *
-     * @param {Boolean} [Options.ShowTooltip = false] - If true, enables tooltip functionality.
+     * @param {Boolean} [Options.ShowTooltips = false] - If true, enables tooltip functionality.
      * `MenuEx`'s tooltip functionality allows you to define your menu and related options to
      * display a tooltip when the user selects a menu item. See {@link MenuExItem.Prototype.SetTooltipHandler}
      * for details and see file "test\demo-TreeView-context-menu.ahk" for a working example.
@@ -110,8 +113,8 @@ class MenuEx {
      * @param {*} [Options.HandlerItemAvailability = ""] - See
      * {@link MenuEx.Prototype.SetItemAvailabilityHandler~Callback}.
      */
-    __New(MenuObj, Options?) {
-        this.Menu := MenuObj
+    __New(MenuObj?, Options?) {
+        this.Menu := MenuObj ?? Menu()
         options := MenuEx.Options(Options ?? unset)
         this.SetSelectionHandler(options.HandlerSelection || unset)
         this.SetTooltipHandler(options.HandlerTooltip || unset, options.TooltipDefaultOptions || unset)
@@ -129,9 +132,7 @@ class MenuEx {
         }
         ObjSetBase(this.Constructor.Prototype, MenuExItem.Prototype)
         ObjRelease(ObjPtr(this))
-        if HasMethod(this, 'Initialize') {
-            this.Initialize(options)
-        }
+        this.Initialize(options)
     }
     /**
      * @param {String} Name - The name of the menu item. This is used across the {@link MenuEx} class
@@ -209,7 +210,7 @@ class MenuEx {
      */
     AddObjectList(Objs) {
         for obj in Objs {
-            this.Menu.Add(obj.Name, this.__HandlerSelection, HasProp(Obj, 'Options') ? (Obj.Options || unset) : unset)
+            this.Menu.Add(obj.Name, this.__HandlerSelection, HasProp(Obj, 'Options') ? (Obj.Options || '') : unset)
             this.__Item.Set(obj.Name, this.Constructor.Call(
                 obj.Name
               , obj.Value
@@ -224,6 +225,11 @@ class MenuEx {
     }
     Get(Name) => this.__Item.Get(Name)
     Has(Name) => this.__Item.Has(Name)
+    Initialize(*) {
+        if HasProp(this, 'DefaultItems') {
+            this.AddObjectList(this.DefaultItems)
+        }
+    }
     /**
      * @param {String|Integer} InsertBefore - The name or position of the menu item before which to
      * insert the new menu item.
@@ -231,17 +237,13 @@ class MenuEx {
      * @param {String} Name - The name of the menu item. This is used across the {@link MenuEx} class
      * and related classes. It is the name that is used to get a reference to the {@link MenuExItem}
      * instance associated with the menu item, e.g. `MenuExObj.Get("ItemName")`. It is also the text
-     * that is displayed in the menu for that item. It is also the value assigned to the "__Name"
-     * property of the {@link MenuExItem} instance.
+     * that is displayed in the menu for that item.
      *
      * @param {*} CallbackOrSubmenu - One of the following:
      * - A `Menu` object, if the menu item is a submenu.
      * - A `Func` or callable object that will be called when the user selects the item.
      * - A string representing the name of a class instance method defined by your custom class which
      *   inherits from `MenuEx` (see the "test\demo-TreeView-context-menu.ahk" for an example).
-     *
-     * The value of `CallbackOrSubmenu` is assigned to the "__Value" property of the {@link MenuExItem}
-     * instance.
      *
      * @param {String} [Options] - The options as described in
      * {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Add}.
@@ -265,11 +267,19 @@ class MenuEx {
      */
     OnSelect(Name, ItemPos, MenuObj) {
         if item := this.__Item.Get(Name) {
-            params := { Menu: MenuObj, Name: Name, Pos: ItemPos, Token: this.Token }
-            if IsObject(item.__Value) {
-                result := item.__Value.Call(this, params)
+            if token := this.Token {
+                this.Token := ''
+                if IsObject(item.__Value) {
+                    result := item.__Value.Call(this, Name, ItemPos, MenuObj, token.Gui, token.Ctrl, token.Item)
+                } else {
+                    result := this.%item.__Value%(Name, ItemPos, MenuObj, token.Gui, token.Ctrl, token.Item)
+                }
             } else {
-                result := this.%item.__Value%(params)
+                if IsObject(item.__Value) {
+                    result := item.__Value.Call(this, Name, ItemPos, MenuObj)
+                } else {
+                    result := this.%item.__Value%(Name, ItemPos, MenuObj)
+                }
             }
             if this.ShowTooltips {
                 if IsObject(item.__HandlerTooltip) {
@@ -341,6 +351,7 @@ class MenuEx {
         } else {
             ; This creates a reference cycle.
             this.__HandlerSelection := ObjBindMethod(this, 'OnSelect')
+            ObjRelease(ObjPtr(this))
             ; This is to identify that the object is the bound method (and thus requires handling
             ; the reference cycle).
             this.__HandlerSelection.DefineProp('Name', { Value: this.OnSelect.Name ' (bound)' })
@@ -365,32 +376,31 @@ class MenuEx {
     Show(X?, Y?) {
         this.Menu.Show(X ?? unset, Y ?? unset)
     }
-    __Call1(GuiCtrlObj, Item, IsRightClick, X, Y) {
+    __Call1(Ctrl, Item, IsRightClick, X, Y) {
         this.Token := {
-            Ctrl: GuiCtrlObj, Gui: GuiCtrlObj.Gui
-          , IsRightClick: IsRightClick
-          , Item: Item, X: X, Y: Y
+            Ctrl: Ctrl
+          , Item: Item
+          , Gui: Ctrl.Gui
         }
-        ObjSetBase(this.Token, MenuExActivationToken.Prototype)
         if HasMethod(this, 'HandlerItemAvailability') {
-            this.HandlerItemAvailability()
+            this.HandlerItemAvailability(Ctrl, IsRightClick, Item, X, Y)
         } else if IsObject(this.__HandlerItemAvailability) {
-            this.__HandlerItemAvailability.Call(this)
+            this.__HandlerItemAvailability.Call(this, Ctrl, IsRightClick, Item, X, Y)
         }
         this.Menu.Show(X, Y)
     }
-    __Call2(GuiObj, GuiCtrlObj, Item, IsRightClick, X, Y) {
+    __Call2(GuiObj, Ctrl, Item, IsRightClick, X, Y) {
         this.Token := {
-            Ctrl: GuiCtrlObj, Gui: GuiObj
-          , IsRightClick: IsRightClick
-          , Item: Item, X: X, Y: Y
+            Ctrl: Ctrl
+          , Gui: GuiObj
+          , Item: Item
         }
-        ObjSetBase(this.Token, MenuExActivationToken.Prototype)
         if HasMethod(this, 'HandlerItemAvailability') {
-            this.HandlerItemAvailability()
+            this.HandlerItemAvailability(GuiObj, Ctrl, IsRightClick, Item, X, Y)
         } else if IsObject(this.__HandlerItemAvailability) {
-            this.__HandlerItemAvailability.Call(this)
+            this.__HandlerItemAvailability.Call(this, GuiObj, Ctrl, IsRightClick, Item, X, Y)
         }
+        CoordMode('Menu', 'Screen')
         this.Menu.Show(X, Y)
     }
     __Delete() {
@@ -445,12 +455,12 @@ class MenuEx {
     class Options {
         static Default := {
             CaseSense: false
-          , HandlerTooltip: ''
-          , HandlerSelection: ''
-          , ShowTooltips: false
-          , WhichMethod: 1
-          , TooltipDefaultOptions: ''
           , HandlerItemAvailability: ''
+          , HandlerSelection: ''
+          , HandlerTooltip: ''
+          , ShowTooltips: false
+          , TooltipDefaultOptions: ''
+          , WhichMethod: 1
         }
         static Call(Options?) {
             if IsSet(Options) {
@@ -605,33 +615,34 @@ class MenuExItem {
      * documents indicate that, for `Menu.Prototype.Add`, the paramter `MenuItemName` can also be
      * the position of an existing item, that is not applicable here; only pass the name to this
      * parameter.
+     *
      * @param {*} CallbackOrSubmenu - The function to call as a new thread when the menu item is
      * selected, or a reference to a Menu object to use as a submenu.
      *
      * Regarding functions:
      *
-     * The function can be any callable object. When using this library (`MenuEx` and related classes),
-     * the functions are not called directly when the user selects a menu item; a handler function is
-     * called which then access the `MenuExItem` object associated with the menu item that was selected.
-     * The function is then called from the property "__Value".
+     * The function can be any callable object.
      *
-     * If `CallbackOrSubmenu` is a function, then the function should accept two parameters:
-     * 1. The {@link MenuEx} instance.
-     * 2. An object with properties:
-     *   - Menu: The menu object.
-     *   - Name: The menu item name that was selected.
-     *   - Pos: The position of the menu item that was selected.
-     *   - Token: The {@link MenuExActivationToken} instance that was created when the menu was
-     *     activated. "Token" only has a significant value when {@link MenuEx.Prototype.SetEventHandler}
-     *     was called with a value of `1` or `2`. That is, if the menu is not activated as a context
-     *     menu, then "Token" is always an empty string. If the menu is activated as a context menu,
-     *     then "Token" is a {@link MenuExActivationToken} instance.
+     * If `CallbackOrSubmenu` is a function, then the function can accept the following parameters:
+     * 1. {MenuEx} - The {@link MenuEx} instance.
+     * 2. {String} - The name of the selected menu item.
+     * 3. {Integer} - The position of the selected menu item (e.g. 1 is the first menu item, 2 is the second, etc.).
+     * 4. {Menu} - The `Menu` object.
+     *
+     * Additionally, if the menu was activated as a context menu event (see
+     * {@link https://www.autohotkey.com/docs/v2/lib/GuiOnEvent.htm#Ctrl-ContextMenu}
+     * and {@link https://www.autohotkey.com/docs/v2/lib/GuiOnEvent.htm#ContextMenu}), the following
+     * parameters are also available:
+     * 5. {Gui} - The `Gui` object
+     * 6. {Gui.Control|String} - The `Gui.Control` object if one is associated with the context menu,
+     *    else an empty string.
+     * 7. {Integer|String} - The "Item" parameter as described in the documentation linked above.
      *
      * The function can also be the name of a class method. For details about this, see the section
      * "Extending MenuEx" in the description above {@link MenuEx}.
      *
      * The function's return value may be used if {@link MenuEx#ShowTooltips} is nonzero. For details
-     * about how the return value is used, see {@link MenuExItem.Prototype.SetTooltipHandler}.
+     * about how the return value is used, see {@link MenuEx.Prototype.SetTooltipHandler}.
      *
      * @param {String} [MenuItemOptions = ""] - Any options as described in
      * {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Add}.
@@ -760,18 +771,6 @@ class MenuExItem {
         Set {
             this.__Value := Value
         }
-    }
-}
-
-
-class MenuExActivationToken {
-    __New(GuiObj, GuiCtrlObj, Item, IsRightClick, X, Y) {
-        this.Gui := GuiObj
-        this.Ctrl := GuiCtrlObj
-        this.Item := Item
-        this.IsRightClick := IsRightClick
-        this.X := X
-        this.Y := Y
     }
 }
 
