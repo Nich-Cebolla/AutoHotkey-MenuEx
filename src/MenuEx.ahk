@@ -81,9 +81,84 @@
 class MenuEx {
     static __New() {
         this.DeleteProp('__New')
+        MenuEx_SetConstants()
         proto := this.Prototype
         proto.__HandlerSelection := proto.__HandlerItemAvailability := proto.Token :=
         proto.__HandlerTooltip := ''
+    }
+    /**
+     * {@link https://learn.microsoft.com/en-us/windows/win32/menurc/wm-changeuistate}
+     *
+     * @param {Integer} Handle - The handle of the window to receive the message. This would typically
+     * be the parent window so all child windows can have the same UI state, but in the context of
+     * an AHK menu `Hwnd` can also be the menu's handle, i.e. `MenuObj.Handle`.
+     *
+     * @param {Integer} Action - One of the following:
+     * - UIS_CLAS - The UI state flags specified by the high-order word should be cleared.
+     * - UIS_INITIALIZE - The UI state flags specified by the high-order word should be changed
+     *   based on the last input event. For more information, see Remarks.
+     * - UIS_SET - The UI state flags specified by the high-order word should be set.
+     *
+     * @param {Integer} State - One or more of the following. Combine with bitwise "or" ( | ),
+     * e.g. `State := UISF_ACTIVE | UISF_HIDEACCEL`.
+     * - UISF_ACTIVE - A control should be drawn in the style used for active controls.
+     * - UISF_HIDEACCEL - Keyboard accelerators are hidden.
+     * - UISF_HIDEFOCUS - Focus indicators are hidden.
+     */
+    static ChangeUiState(Handle, Action, State) {
+        SendMessage(WM_CHANGEUISTATE, (State & 0xFFFF) << 16 | (Action & 0xFFFF), 0, , Handle)
+    }
+    /**
+     * {@link https://learn.microsoft.com/en-us/windows/win32/menurc/wm-queryuistate}
+     *
+     * @param {Integer} Handle - The handle of the window to receive the message.
+     *
+     * @param {VarRef} [OutActive] - A variable that will receive either:
+     * - 0 if the UISF_ACTIVE flag was not included in the return value.
+     * - 1 if the UISF_ACTIVE flag was included in the return value.
+     *
+     * @param {VarRef} [OutAccel] - A variable that will receive either:
+     * - 0 if the UISF_HIDEACCEL flag was not included in the return value. This would indicate
+     *   that keyboard accelerators are visible.
+     * - 1 if the UISF_HIDEACCEL flag was included in the return value. This would indicate that
+     *   keyboard accelerators are hidden.
+     *
+     * @param {VarRef} [OutFocus] - A variable that will receive either:
+     * - 0 if the UISF_HIDEFOCUS flag was not included in the return value.  This would indicate
+     *   that focus indicators are visible.
+     * - 1 if the UISF_HIDEFOCUS flag was included in the return value. This would indicate that
+     *   focus indicators are hidden.
+     */
+    static QueryUiState(Handle, &OutActive?, &OutAccel?, &OutFocus?) {
+        if value := SendMessage(WM_QUERYUISTATE, 0, 0, , Handle) {
+            OutActive := value & UISF_ACTIVE
+            OutAccel := value & UISF_HIDEACCEL
+            OutFocus := value & UISF_HIDEFOCUS
+        } else {
+            OutActive := OutAccel := OutFocus := 0
+        }
+    }
+    /**
+     * {@link https://learn.microsoft.com/en-us/windows/win32/menurc/wm-updateuistate}
+     *
+     * @param {Integer} Handle - The handle of the window to receive the message. This would typically
+     * be the parent window so all child windows can have the same UI state, but in the context of
+     * an AHK menu `Hwnd` can also be the menu's handle, i.e. `MenuObj.Handle`.
+     *
+     * @param {Integer} Action - One of the following:
+     * - UIS_CLAS - The UI state flags specified by the high-order word should be cleared.
+     * - UIS_INITIALIZE - The UI state flags specified by the high-order word should be changed
+     *   based on the last input event. For more information, see Remarks.
+     * - UIS_SET - The UI state flags specified by the high-order word should be set.
+     *
+     * @param {Integer} State - One or more of the following. Combine with bitwise "or" ( | ),
+     * e.g. `State := UISF_ACTIVE | UISF_HIDEACCEL`.
+     * - UISF_ACTIVE - A control should be drawn in the style used for active controls.
+     * - UISF_HIDEACCEL - Keyboard accelerators are hidden.
+     * - UISF_HIDEFOCUS - Focus indicators are hidden.
+     */
+    static UpdateUiState(Handle, Action, State) {
+        SendMessage(WM_UPDATEUISTATE, (State & 0xFFFF) << 16 | (Action & 0xFFFF), 0, , Handle)
     }
     /**
      * @param {Menu|MenuBar} [MenuObj] - The menu object. If unset, a new instance of `Menu` is created.
@@ -209,9 +284,13 @@ class MenuEx {
      * or an array of {@link MenuExItem} instance objects.
      */
     AddObjectList(Objs) {
+        m := this.Menu
+        item := this.__Item
+        constructor := this.Constructor
+        handlerSelection := this.__HandlerSelection
         for obj in Objs {
-            this.Menu.Add(obj.Name, this.__HandlerSelection, HasProp(Obj, 'Options') ? (Obj.Options || '') : unset)
-            this.__Item.Set(obj.Name, this.Constructor.Call(
+            m.Add(obj.Name, handlerSelection, HasProp(Obj, 'Options') ? (Obj.Options || '') : unset)
+            item.Set(obj.Name, constructor(
                 obj.Name
               , obj.Value
               , HasProp(Obj, 'Options') ? (Obj.Options || unset) : unset
@@ -222,6 +301,28 @@ class MenuEx {
     Delete(Name) {
         this.Menu.Delete(Name)
         this.__Item.Delete(Name)
+    }
+    DeleteList(Names) {
+        m := this.Menu
+        item := this.__Item
+        for name in Names {
+            m.Delete(name)
+            item.Delete(name)
+        }
+    }
+    DeletePattern(NamePattern) {
+        m := this.Menu
+        item := this.__Item
+        names := []
+        for name in item {
+            if RegExMatch(name, NamePattern) {
+                names.Push(name)
+            }
+        }
+        for name in names {
+            m.Delete(name)
+            item.Delete(name)
+        }
     }
     Get(Name) => this.__Item.Get(Name)
     Has(Name) => this.__Item.Has(Name)
@@ -775,4 +876,33 @@ class MenuExItem {
 }
 
 class MenuExItemCollection extends Map {
+}
+
+/**
+ * Sets the global constant variables.
+ *
+ * @param {Boolean} [force = false] - When false, if `TreeViewEx_SetConstants` has already been called
+ * (more specifically, if `tvex_flag_constants_set` has been set), the function returns immediately.
+ * If true, the function executes in its entirety.
+ */
+MenuEx_SetConstants(force := false) {
+    global
+    if IsSet(MenuEx_flag_constants_set) && !force {
+        return
+    }
+    ; https://learn.microsoft.com/en-us/windows/win32/menurc/keyboard-accelerator-messages
+    WM_CHANGEUISTATE                := 0x0127
+    WM_INITMENU                     := 0x0116
+    WM_QUERYUISTATE                 := 0x0129
+    WM_UPDATEUISTATE                := 0x0128
+
+    UIS_CLEAR := 2
+    UIS_INITIALIZE := 3
+    UIS_SET := 1
+
+    UISF_ACTIVE := 0x4
+    UISF_HIDEACCEL := 0x2
+    UISF_HIDEFOCUS := 0x1
+
+    MenuEx_flag_constants_set := 1
 }
