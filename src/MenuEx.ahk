@@ -285,12 +285,12 @@ class MenuEx {
      */
     AddObjectList(Objs) {
         m := this.Menu
-        item := this.__Item
+        items := this.__Item
         constructor := this.Constructor
         handlerSelection := this.__HandlerSelection
         for obj in Objs {
             m.Add(obj.Name, handlerSelection, HasProp(Obj, 'Options') ? (Obj.Options || '') : unset)
-            item.Set(obj.Name, constructor(
+            items.Set(obj.Name, constructor(
                 obj.Name
               , obj.Value
               , HasProp(Obj, 'Options') ? (Obj.Options || unset) : unset
@@ -304,24 +304,24 @@ class MenuEx {
     }
     DeleteList(Names) {
         m := this.Menu
-        item := this.__Item
+        items := this.__Item
         for name in Names {
             m.Delete(name)
-            item.Delete(name)
+            items.Delete(name)
         }
     }
     DeletePattern(NamePattern) {
         m := this.Menu
-        item := this.__Item
+        items := this.__Item
         names := []
-        for name in item {
+        for name in items {
             if RegExMatch(name, NamePattern) {
                 names.Push(name)
             }
         }
         for name in names {
             m.Delete(name)
-            item.Delete(name)
+            items.Delete(name)
         }
     }
     Get(Name) => this.__Item.Get(Name)
