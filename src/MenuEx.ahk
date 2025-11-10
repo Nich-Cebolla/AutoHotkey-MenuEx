@@ -38,10 +38,10 @@
  * `MenuEx` was designed with object inheritance in mind. One benefit of using `MenuEx` over
  * using `Menu` directly is it makes it easy to share menu items between menus and between scripts.
  *
- * Inheriting from `MenuEx` involves 2-4 steps. See the example in file
+ * Inheriting from `MenuEx` involves 1-4 steps. See the example in file
  * "test\demo-TreeView-context-menu.ahk" for a working example of each of these steps.
  *
- * 1. Define default items.
+ * 1. (Required) Define default items.
  *
  * To define default items, your class should define a static method "__New" that adds a property
  * "DefaultItems" to the prototype. "DefaultItems" is an array of objects, each object with required
@@ -58,15 +58,26 @@
  * - Options: Any options as described in {@link https://www.autohotkey.com/docs/v2/lib/Menu.htm#Add}.
  * - Tooltip: A value as described by {@link MenuExItem.Prototype.SetTooltipHandler}
  *
- * 2. Define "Initialize".
+ * 2. (Optional) Define "Initialize".
  *
- * Define a method "Initialize" which calls `this.AddObjectList(this.DefaultItems)` and any other
- * initialization tasks required by your class.
+ * "Initialize" is called once for every new instance of {@link MenuEx} / every new instance of a
+ * class that inherits from {@link MenuEx} (unless the inheritor overrides "__New"). This allows your
+ * code to include any initialization tasks without needing to redefine the "__New" method.
+ *
+ * {@link MenuEx.Prototype.__New} handles adding the default items (as described above) to the menu,
+ * so your code only needs to define an "Initialize" method if there are some other initialization
+ * tasks required for instances of your menu class to work.
+ *
+ *   - Parameters:
+ *     1. {MenuEx.Options} The options object after it has been processed by
+ *       {@link MenuEx.Options.Prototype.__New}.
+ *   - The return value is ignored.
  *
  * 3. (Optional) Define instance methods.
  *
- * When creating a class that represents a menu that will be reused across various windows / scripts,
- * it makes sense to define the menu item functions directly in the class as instance methods.
+ * Though not strictly necessary, your class that inherits from {@link MenuEx} can define the menu
+ * functions as instance methods, as seen in the demo test\demo-TreeView-context-menu.ahk. This allows
+ * you to define the "Value" property of the menu item objects with the string name of the method.
  *
  * 4. (Optional) Define an item availability handler.
  *
@@ -207,7 +218,12 @@ class MenuEx {
         }
         ObjSetBase(this.Constructor.Prototype, MenuExItem.Prototype)
         ObjRelease(ObjPtr(this))
-        this.Initialize(options)
+        if HasProp(this, 'DefaultItems') {
+            this.AddObjectList(this.DefaultItems)
+        }
+        if HasMethod(this, 'Initialize') {
+            this.Initialize(options)
+        }
     }
     /**
      * @param {String} Name - The name of the menu item. This is used across the {@link MenuEx} class
@@ -326,11 +342,6 @@ class MenuEx {
     }
     Get(Name) => this.__Item.Get(Name)
     Has(Name) => this.__Item.Has(Name)
-    Initialize(*) {
-        if HasProp(this, 'DefaultItems') {
-            this.AddObjectList(this.DefaultItems)
-        }
-    }
     /**
      * @param {String|Integer} InsertBefore - The name or position of the menu item before which to
      * insert the new menu item.
@@ -554,25 +565,29 @@ class MenuEx {
     }
 
     class Options {
-        static Default := {
-            CaseSense: false
-          , HandlerItemAvailability: ''
-          , HandlerSelection: ''
-          , HandlerTooltip: ''
-          , ShowTooltips: false
-          , TooltipDefaultOptions: ''
-          , WhichMethod: 1
+        static __New() {
+            this.DeleteProp('__New')
+            this.Prototype.Default := {
+                CaseSense: false
+              , HandlerItemAvailability: ''
+              , HandlerSelection: ''
+              , HandlerTooltip: ''
+              , ShowTooltips: false
+              , TooltipDefaultOptions: ''
+              , WhichMethod: 1
+            }
+            this.Prototype.Options := ''
         }
-        static Call(Options?) {
+        __New(Options?) {
             if IsSet(Options) {
-                o := {}
-                d := this.Default
-                for prop in d.OwnProps() {
-                    o.%prop% := HasProp(Options, prop) ? Options.%prop% : d.%prop%
-                }
-                return o
+                this.Options := Options
+            }
+        }
+        __Get(Name, *) {
+            if this.Options && HasProp(this.Options, Name) {
+                return this.Options.%Name%
             } else {
-                return this.Default.Clone()
+                return this.Default.%Name%
             }
         }
     }
