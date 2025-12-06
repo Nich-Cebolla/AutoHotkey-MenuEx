@@ -209,7 +209,6 @@ class MenuEx {
         this.ShowTooltips := options.ShowTooltips
         this.__Item := MenuExItemCollection()
         this.__Item.CaseSense := options.CaseSense
-        this.__Item.Default := ''
         this.Constructor := Class()
         this.Constructor.Base := MenuExItem
         this.Constructor.Prototype := {
@@ -890,7 +889,20 @@ class MenuExItem {
     }
 }
 
+/**
+ * @classdesc - The purpose of this is to allow removing items to the menu without
+ * needing to adjust the item availability handler. {@link MenuExItemCollection.DefaultItem}
+ * prevents a property error when the item availability handler attempts to enable or disable an
+ * item that does not exist in the collection.
+ */
 class MenuExItemCollection extends Map {
+    static __New() {
+        this.DeleteProp('__New')
+        this.Prototype.Default := this.DefaultItem()
+    }
+    class DefaultItem {
+        __Call(*) => ''
+    }
 }
 
 /**
